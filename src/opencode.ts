@@ -39,6 +39,22 @@ export interface SdkDeps {
   createOpencode: (options?: any) => Promise<{ client: any; server: { url: string; close(): void } }>;
 }
 
+function isAgentApiUnavailableError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+
+  const error = err as { message?: unknown; code?: unknown };
+  const message = typeof error.message === "string" ? error.message.toLowerCase() : "";
+  const code = typeof error.code === "string" ? error.code.toLowerCase() : "";
+
+  return (
+    message.includes("not available") ||
+    message.includes("not implemented") ||
+    message.includes("is not a function") ||
+    code === "method_not_found" ||
+    code === "not_implemented"
+  );
+}
+
 function parseModel(model: string): { providerID: string; modelID: string } | undefined {
   if (!model) return undefined;
   const parts = model.split("/");
@@ -95,7 +111,7 @@ export async function connectOrStartServer(
     const result = await sdk.createOpencode({
       hostname: config.hostname,
       port: config.port,
-      timeout: config.startupTimeoutMs,
+      timeout: config.serverStartupTimeoutMs ?? 30000,
       signal: deps?.signal,
     });
     logger?.info(`OpenCode server spawned at ${result.server.url}`);
@@ -124,7 +140,11 @@ export async function validateAgent(
     logger?.debug(`Agent "${agentName}" validated (mode: ${found.mode})`);
   } catch (err: any) {
     if (err instanceof AppError) throw err;
-    logger?.debug(`Agent validation skipped (agents() failed): ${err?.message || err}`);
+    if (isAgentApiUnavailableError(err)) {
+      logger?.info(`WARNING: Could not verify agent "${agentName}" (agents() API unavailable). Proceeding without agent confirmation.`);
+      return;
+    }
+    throw new AppError("UNKNOWN", `Failed to verify agent "${agentName}": ${err?.message || err}`, err);
   }
 }
 

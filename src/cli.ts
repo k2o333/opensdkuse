@@ -166,7 +166,7 @@ OPTIONS:
   --json                Output structured JSON result (requires --schema-file)
   --schema-file <path>  JSON Schema file for structured output
   --agent <name>      Validate agent exists (pre-check only, not passed to SDK)
-  --timeout <ms>       Execution timeout in milliseconds
+  --timeout <ms>       Execution timeout in milliseconds (covers the entire workflow)
   --                   End of options (remaining args are task input)
 
 ENVIRONMENT VARIABLES:

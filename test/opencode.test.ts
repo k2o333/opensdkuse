@@ -23,7 +23,8 @@ const MOCK_CONFIG: AppConfig = {
   port: 4096,
   promptFile: "prompt.md",
   sessionTitle: "test-session",
-  startupTimeoutMs: 5000,
+  serverStartupTimeoutMs: 5000,
+  executionTimeoutMs: 10000,
   maxInputLength: 100000,
 };
 
@@ -195,6 +196,41 @@ describe("opencode.validateAgent", () => {
       },
     });
     await assert.doesNotReject(() => validateAgent(client, "any-agent"));
+  });
+
+  it("logs warning when agents() API call fails", async () => {
+    const client = makeMockClient({
+      app: {
+        agents: async () => { throw new Error("endpoint not available"); },
+      },
+    });
+    const warningCalls: string[] = [];
+    const mockLogger = {
+      info: (msg: string) => warningCalls.push(msg),
+      debug: (_msg: string) => {},
+      error: (_msg: string) => {},
+      separator: () => {},
+    };
+    await assert.doesNotReject(() => validateAgent(client, "coder", mockLogger as any));
+    assert.ok(
+      warningCalls.some((msg) => msg.includes("WARNING") && msg.includes("Could not verify")),
+      `Expected warning message with "WARNING" and "Could not verify", got: ${warningCalls.join(", ")}`,
+    );
+  });
+
+  it("throws when agents() fails for reasons other than API unavailability", async () => {
+    const client = makeMockClient({
+      app: {
+        agents: async () => { throw new Error("socket hang up"); },
+      },
+    });
+    await assert.rejects(
+      () => validateAgent(client, "coder"),
+      (err: any) =>
+        err instanceof AppError &&
+        err.code === "UNKNOWN" &&
+        err.message.includes("socket hang up"),
+    );
   });
 
   it("agent is validation-only (pre-check), not passed to SDK session methods", async () => {

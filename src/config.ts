@@ -6,7 +6,8 @@ export interface AppConfig {
   port: number;
   promptFile: string;
   sessionTitle: string;
-  startupTimeoutMs: number;
+  serverStartupTimeoutMs?: number;
+  executionTimeoutMs?: number;
   maxInputLength: number;
 }
 
@@ -16,7 +17,8 @@ const DEFAULTS: AppConfig = {
   port: 4096,
   promptFile: "prompt.md",
   sessionTitle: "opencode-cli-session",
-  startupTimeoutMs: 30000,
+  serverStartupTimeoutMs: 30000,
+  executionTimeoutMs: 2700000,
   maxInputLength: 100000,
 };
 
@@ -49,7 +51,9 @@ export function createConfig(cliArgs?: Partial<CliArgs>): AppConfig {
   if (envPrompt) config.promptFile = envPrompt;
 
   const envTimeout = envInt("OPENCODE_TIMEOUT_MS");
-  if (envTimeout !== undefined) config.startupTimeoutMs = envTimeout;
+  if (envTimeout !== undefined) {
+    config.executionTimeoutMs = envTimeout;
+  }
 
   const envMaxLen = envInt("OPENCODE_MAX_INPUT_LENGTH");
   if (envMaxLen !== undefined) config.maxInputLength = envMaxLen;
@@ -59,7 +63,9 @@ export function createConfig(cliArgs?: Partial<CliArgs>): AppConfig {
   if (cliArgs?.host) config.hostname = cliArgs.host;
   if (cliArgs?.port !== undefined) config.port = cliArgs.port;
   if (cliArgs?.promptFile) config.promptFile = cliArgs.promptFile;
-  if (cliArgs?.timeoutMs !== undefined) config.startupTimeoutMs = cliArgs.timeoutMs;
+  if (cliArgs?.timeoutMs !== undefined) {
+    config.executionTimeoutMs = cliArgs.timeoutMs;
+  }
 
   return config;
 }

@@ -172,7 +172,7 @@ describe("response.formatTextOutput", () => {
 });
 
 describe("response.formatJsonOutput", () => {
-  it("includes structured and text", () => {
+  it("includes result and text when structured output present", () => {
     const nr = normalizeSdkResponse(
       makeResult(
         [{ type: "text", text: "hello" }],
@@ -180,8 +180,9 @@ describe("response.formatJsonOutput", () => {
       ),
     );
     const output = JSON.parse(formatJsonOutput(nr));
-    assert.deepEqual(output.structured, { k: "v" });
-    assert.equal(output.text, "hello");
+    assert.deepEqual(output.result, { k: "v" });
+    assert.equal(output.text, null);
+    assert.equal(output.mode, "structured");
   });
 
   it("includes error", () => {
@@ -196,5 +197,122 @@ describe("response.formatJsonOutput", () => {
     );
     const output = JSON.parse(formatJsonOutput(nr));
     assert.equal(output.error.name, "StructuredOutputError");
+  });
+});
+
+describe("response.extractErrorFromInfo - fallback", () => {
+  it("extracts error.message as fallback when data.message is absent", () => {
+    const result = makeResult(
+      [],
+      {
+        id: "m1", sessionID: "s1", role: "assistant",
+        error: { name: "SomeError", message: "fallback message" },
+      },
+    );
+    const normalized = normalizeSdkResponse(result);
+    assert.equal(normalized.error?.message, "fallback message");
+  });
+
+  it("prefers data.message over error.message when both present", () => {
+    const result = makeResult(
+      [],
+      {
+        id: "m1", sessionID: "s1", role: "assistant",
+        error: { name: "SomeError", message: "error msg", data: { message: "data msg", retries: 2 } },
+      },
+    );
+    const normalized = normalizeSdkResponse(result);
+    assert.equal(normalized.error?.message, "data msg");
+    assert.equal(normalized.error?.retries, 2);
+  });
+
+  it("returns undefined message when neither data.message nor error.message exists", () => {
+    const result = makeResult(
+      [],
+      {
+        id: "m1", sessionID: "s1", role: "assistant",
+        error: { name: "SomeError" },
+      },
+    );
+    const normalized = normalizeSdkResponse(result);
+    assert.equal(normalized.error?.message, undefined);
+  });
+});
+
+describe("response.formatJsonOutput - mode契约", () => {
+  it("outputs mode=structured with result when structuredOutput present", () => {
+    const nr = normalizeSdkResponse(
+      makeResult(
+        [{ type: "text", text: "hello" }],
+        { id: "m1", sessionID: "sess-1", role: "assistant", structured: { key: "value" } },
+      ),
+    );
+    const output = JSON.parse(formatJsonOutput(nr));
+    assert.equal(output.mode, "structured");
+    assert.deepEqual(output.result, { key: "value" });
+    assert.equal(output.text, null);
+    assert.equal(output.error, null);
+  });
+
+  it("outputs mode=text with text when only text parts present", () => {
+    const nr = normalizeSdkResponse(
+      makeResult([{ type: "text", text: "hello" }]),
+    );
+    const output = JSON.parse(formatJsonOutput(nr));
+    assert.equal(output.mode, "text");
+    assert.equal(output.text, "hello");
+    assert.equal(output.result, null);
+    assert.equal(output.error, null);
+  });
+
+  it("outputs mode=error when error present", () => {
+    const nr = normalizeSdkResponse(
+      makeResult(
+        [],
+        {
+          id: "m1", sessionID: "s1", role: "assistant",
+          error: { name: "StructuredOutputError", data: { message: "fail", retries: 1 } },
+        },
+      ),
+    );
+    const output = JSON.parse(formatJsonOutput(nr));
+    assert.equal(output.mode, "error");
+    assert.ok(output.error);
+    assert.equal(output.result, null);
+    assert.equal(output.text, null);
+  });
+
+  it("outputs mode=error even when both error and structuredOutput present", () => {
+    const nr = normalizeSdkResponse(
+      makeResult(
+        [{ type: "text", text: "done" }],
+        {
+          id: "m1", sessionID: "s1", role: "assistant",
+          structured: { key: "value" },
+          error: { name: "StructuredOutputError", data: { message: "fail", retries: 1 } },
+        },
+      ),
+    );
+    const output = JSON.parse(formatJsonOutput(nr));
+    assert.equal(output.mode, "error");
+    assert.ok(output.error);
+    assert.equal(output.result, null);
+  });
+
+  it("includes sessionId from info.sessionID", () => {
+    const nr = normalizeSdkResponse(
+      makeResult(
+        [{ type: "text", text: "hello" }],
+        { id: "m1", sessionID: "sess-1", role: "assistant" },
+      ),
+    );
+    const output = JSON.parse(formatJsonOutput(nr));
+    assert.equal(output.sessionId, "sess-1");
+  });
+
+  it("returns null sessionId when info is null", () => {
+    const nr = normalizeSdkResponse({ data: { info: null, parts: [] } } as any);
+    const output = JSON.parse(formatJsonOutput(nr));
+    assert.equal(output.sessionId, null);
   });
 });

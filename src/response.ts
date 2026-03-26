@@ -20,6 +20,7 @@ interface AssistantInfo {
   role: string;
   error?: {
     name: string;
+    message?: string;
     data?: { message?: string; retries?: number; [key: string]: unknown };
   };
   structured?: unknown;
@@ -74,7 +75,7 @@ function extractErrorFromInfo(info: AssistantInfo | null): { name?: string; mess
   if (!info?.error) return null;
   return {
     name: info.error.name,
-    message: info.error.data?.message,
+    message: info.error.data?.message ?? info.error.message,
     retries: info.error.data?.retries,
   };
 }
@@ -114,15 +115,24 @@ export function formatTextOutput(normalized: NormalizedResponse): string {
 }
 
 export function formatJsonOutput(normalized: NormalizedResponse): string {
-  const output: Record<string, unknown> = {};
-  if (normalized.structuredOutput !== null) {
-    output.structured = normalized.structuredOutput;
-  }
-  if (normalized.text) {
-    output.text = normalized.text;
-  }
+  let mode: "structured" | "text" | "error";
   if (normalized.error) {
-    output.error = normalized.error;
+    mode = "error";
+  } else if (normalized.structuredOutput !== null) {
+    mode = "structured";
+  } else {
+    mode = "text";
   }
+
+  const output = {
+    mode,
+    sessionId: normalized.info?.sessionID ?? null,
+    result: mode === "structured" ? normalized.structuredOutput : null,
+    text: mode === "text" ? (normalized.text ?? null) : null,
+    error: normalized.error
+      ? { name: normalized.error.name, message: normalized.error.message, retries: normalized.error.retries }
+      : null,
+  };
+
   return JSON.stringify(output, null, 2);
 }

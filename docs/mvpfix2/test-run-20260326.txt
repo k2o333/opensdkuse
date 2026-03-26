@@ -1,0 +1,166 @@
+# 2026-03-26 测试验证记录
+
+## 执行命令
+
+```bash
+npm run typecheck
+npm test
+```
+
+## 环境
+
+- 工作目录：/home/quan/proj/opensdkuse
+- Node.js 内置 test runner (node --test)
+- 测试文件：test/*.test.ts
+
+---
+
+## npm run typecheck
+
+```
+> opencode-sdk-cli@0.1.0 typecheck
+> tsc --noEmit
+
+(无输出 = 通过)
+```
+
+**结果：通过（无类型错误）**
+
+---
+
+## npm test
+
+```
+> opencode-sdk-cli@0.1.0 test
+> node --loader ts-node/esm --test test/*.test.ts
+```
+
+### 最终结果
+
+```
+1..44
+# tests 137
+# suites 44
+# pass 137
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 6140.335386
+```
+
+### 测试套件概览
+
+| # | 套件名 | 结果 |
+|---|--------|------|
+| 1 | cli.parseArgs | ok |
+| 2 | cli.validateInput | ok |
+| 3 | cli.showHelp | ok |
+| 4 | config.createConfig - defaults | ok |
+| 5 | config.createConfig - env overrides | ok |
+| 6 | config.createConfig - CLI overrides | ok |
+| 7 | config.getServerUrl | ok |
+| 8 | AppError | ok |
+| 9 | getExitCode | ok |
+| 10 | logger.createLogger - debug=false | ok |
+| 11 | logger.createLogger - debug=true | ok |
+| 12 | logger.separator | ok |
+| 13 | logger.log | ok |
+| 14 | main - input validation | ok |
+| 15 | main - prompt file errors | ok |
+| 16 | main - help | ok |
+| 17 | main - structured output flag | ok |
+| 18 | main - agent validation wiring | ok |
+| 19 | main - timeout behavior | ok |
+| 20 | main - signal handler stability | ok |
+| 21 | main - keep-session behavior | ok |
+| 22 | main - structured output schema validation | ok |
+| 23 | opencode.connectOrStartServer - attach success | ok |
+| 24 | opencode.connectOrStartServer - attach fail then spawn | ok |
+| 25 | opencode.createSession | ok |
+| 26 | opencode.validateAgent | ok |
+| 27 | opencode.injectPromptTemplate | ok |
+| 28 | opencode.executePrompt | ok |
+| 29 | opencode.abortSession | ok |
+| 30 | opencode.deleteSession | ok |
+| 31 | opencode cleanup order | ok |
+| 32 | opencode.closeServer | ok |
+| 33 | opencode error handling | ok |
+| 34 | prompt.loadPromptTemplate | ok |
+| 35 | prompt.validatePromptTemplate | ok |
+| 36 | prompt.buildUserTask | ok |
+| 37 | response.normalizeSdkResponse | ok |
+| 38 | response.extractText | ok |
+| 39 | response.extractStructuredOutput | ok |
+| 40 | response.isStructuredOutputError | ok |
+| 41 | response.formatTextOutput | ok |
+| 42 | response.formatJsonOutput | ok |
+| 43 | response.extractErrorFromInfo - fallback | ok |
+| 44 | response.formatJsonOutput - mode契约 | ok |
+
+---
+
+## 关键输出片段
+
+### formatJsonOutput - mode契约（新增测试）
+
+```
+# Subtest: response.formatJsonOutput - mode契约
+    # Subtest: outputs mode=structured with result when structuredOutput present
+    ok 1 - outputs mode=structured with result when structuredOutput present
+    # Subtest: outputs mode=text with text when only text parts present
+    ok 2 - outputs mode=text with text when only text parts present
+    # Subtest: outputs mode=error when error present
+    ok 3 - outputs mode=error when error present
+    # Subtest: outputs mode=error even when both error and structuredOutput present
+    ok 4 - outputs mode=error even when both error and structuredOutput present
+    # Subtest: includes sessionId from info.sessionID
+    ok 5 - includes sessionId from info.sessionID
+    # Subtest: returns null sessionId when info is null
+    ok 6 - returns null sessionId when info is null
+    1..6
+ok 44 - response.formatJsonOutput - mode契约
+```
+
+### main - structured output schema validation（包含 JSON 输出示例）
+
+```
+# [ERROR] Model returned error: APIError: invalid api key
+# {
+#   "mode": "error",
+#   "sessionId": "ses_2d52c50bbffeFvn8v1dyeepyv8",
+#   "result": null,
+#   "text": null,
+#   "error": {
+#     "name": "APIError",
+#     "message": "invalid api key"
+#   }
+# }
+    # Subtest: accepts --json with valid --schema-file (mocked SDK path)
+    ok 5 - accepts --json with valid --schema-file (mocked SDK path)
+```
+
+### opencode.validateAgent（包含 warning 测试）
+
+```
+# Subtest: opencode.validateAgent
+    # Subtest: passes when agent exists
+    ok 1 - passes when agent exists
+    # Subtest: throws CONFIG_INVALID when agent not found
+    ok 2 - throws CONFIG_INVALID when agent not found
+    # Subtest: skips validation when agents() call fails
+    ok 3 - skips validation when agents() call fails
+    # Subtest: logs warning when agents() API call fails
+    ok 4 - logs warning when agents() API call fails
+    # Subtest: agent is validation-only (pre-check), not passed to SDK session methods
+    ok 5 - agent is validation-only (pre-check), not passed to SDK session methods
+    1..5
+ok 26 - opencode.validateAgent
+```
+
+---
+
+## 结论
+
+- typecheck：通过
+- npm test：137 tests, 137 pass, 0 fail

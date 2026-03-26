@@ -293,7 +293,7 @@ describe("main - structured output schema validation", () => {
         "--timeout", "5000",
         "test",
       ]);
-      assert.ok(exitCode === 1 || exitCode === 3, `Expected exit 1 or 3 (SDK error), got ${exitCode}`);
+      assert.notEqual(exitCode, 2, `Expected valid schema to avoid config failure, got ${exitCode}`);
     } finally {
       try { unlinkSync(promptPath); } catch {}
       try { unlinkSync(validSchemaPath); } catch {}

@@ -17,7 +17,9 @@ describe("config.createConfig - defaults", () => {
     assert.equal(cfg.port, 4096);
     assert.equal(cfg.promptFile, "prompt.md");
     assert.equal(cfg.sessionTitle, "opencode-cli-session");
-    assert.equal(cfg.startupTimeoutMs, 30000);
+    assert.equal(cfg.serverStartupTimeoutMs, 30000);
+    assert.equal(cfg.executionTimeoutMs, 2700000);
+    assert.equal("startupTimeoutMs" in cfg, false);
     assert.equal(cfg.maxInputLength, 100000);
   });
 });
@@ -59,7 +61,8 @@ describe("config.createConfig - env overrides", () => {
     clearEnv();
     process.env.OPENCODE_TIMEOUT_MS = "60000";
     const cfg = createConfig();
-    assert.equal(cfg.startupTimeoutMs, 60000);
+    assert.equal(cfg.executionTimeoutMs, 60000);
+    assert.equal(cfg.serverStartupTimeoutMs, 30000);
     delete process.env.OPENCODE_TIMEOUT_MS;
   });
 
@@ -125,7 +128,8 @@ describe("config.createConfig - CLI overrides", () => {
     clearEnv();
     process.env.OPENCODE_TIMEOUT_MS = "1000";
     const cfg = createConfig({ timeoutMs: 9999 });
-    assert.equal(cfg.startupTimeoutMs, 9999);
+    assert.equal(cfg.executionTimeoutMs, 9999);
+    assert.equal(cfg.serverStartupTimeoutMs, 30000);
     delete process.env.OPENCODE_TIMEOUT_MS;
   });
 
@@ -134,6 +138,40 @@ describe("config.createConfig - CLI overrides", () => {
     const cfg = createConfig({ port: 0 });
     // port=0 passes the `!== undefined` check and gets set
     assert.equal(cfg.port, 0);
+  });
+
+  it("--timeout maps to executionTimeoutMs", () => {
+    clearEnv();
+    const cfg = createConfig({ timeoutMs: 60000 });
+    assert.equal(cfg.executionTimeoutMs, 60000);
+  });
+
+  it("executionTimeoutMs has a sensible default", () => {
+    clearEnv();
+    const cfg = createConfig({});
+    assert.ok(cfg.executionTimeoutMs !== undefined);
+    assert.ok(cfg.executionTimeoutMs > 0);
+  });
+
+  it("serverStartupTimeoutMs has internal default", () => {
+    clearEnv();
+    const cfg = createConfig({});
+    assert.ok(cfg.serverStartupTimeoutMs !== undefined);
+    assert.ok(cfg.serverStartupTimeoutMs > 0);
+  });
+
+  it("OPENCODE_TIMEOUT_MS sets executionTimeoutMs", () => {
+    clearEnv();
+    process.env.OPENCODE_TIMEOUT_MS = "45000";
+    const cfg = createConfig();
+    assert.equal(cfg.executionTimeoutMs, 45000);
+    delete process.env.OPENCODE_TIMEOUT_MS;
+  });
+
+  it("does not retain legacy startupTimeoutMs field", () => {
+    clearEnv();
+    const cfg = createConfig({ timeoutMs: 45000 });
+    assert.equal("startupTimeoutMs" in cfg, false);
   });
 });
 
@@ -145,7 +183,8 @@ describe("config.getServerUrl", () => {
       port: 3000,
       promptFile: "p.md",
       sessionTitle: "t",
-      startupTimeoutMs: 5000,
+      serverStartupTimeoutMs: 5000,
+      executionTimeoutMs: 10000,
       maxInputLength: 1000,
     };
     assert.equal(getServerUrl(cfg), "http://192.168.1.1:3000");

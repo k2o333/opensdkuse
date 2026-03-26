@@ -65,6 +65,24 @@ export async function main(argv?: string[]): Promise<number> {
     return 0;
   }
 
+  if (cliArgs.json && !cliArgs.schemaFile) {
+    console.error("Error: --json requires --schema-file to specify a JSON schema");
+    return getExitCode("CONFIG_INVALID");
+  }
+
+  let structuredSchema: Record<string, unknown> | undefined;
+  if (cliArgs.schemaFile) {
+    try {
+      structuredSchema = loadSchemaFile(cliArgs.schemaFile);
+    } catch (err) {
+      if (err instanceof AppError) {
+        console.error(`Error: ${err.message}`);
+        return getExitCode(err.code);
+      }
+      throw err;
+    }
+  }
+
   const config = createConfig(cliArgs);
   const logger = createLogger(cliArgs.debug);
 
@@ -102,14 +120,15 @@ export async function main(argv?: string[]): Promise<number> {
 
   // Timeout timer
   let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
-  if (config.startupTimeoutMs > 0) {
+  const execTimeout = config.executionTimeoutMs ?? 0;
+  if (execTimeout > 0) {
     timeoutTimer = setTimeout(() => {
       if (!interrupted) {
         interrupted = true;
-        mainError = new AppError("TIMEOUT", `Execution timed out after ${config.startupTimeoutMs}ms`);
+        mainError = new AppError("TIMEOUT", `Execution timed out after ${execTimeout}ms`);
         abortController.abort();
       }
-    }, config.startupTimeoutMs);
+    }, execTimeout);
   }
 
   // Signal handlers - must be named functions to allow proper removal
@@ -163,16 +182,11 @@ export async function main(argv?: string[]): Promise<number> {
     const userTask = buildUserTask(cliArgs.userInput);
     logger.debug("Sending user task...");
 
-    if (cliArgs.json && !cliArgs.schemaFile) {
-      throw new AppError("CONFIG_INVALID", "--json requires --schema-file to specify a JSON schema");
-    }
-
     const promptOpts: { model?: string; structured?: StructuredOutputOptions } = {};
     if (config.model) promptOpts.model = config.model;
 
-    if (cliArgs.schemaFile) {
-      const schema = loadSchemaFile(cliArgs.schemaFile);
-      promptOpts.structured = { schema };
+    if (structuredSchema) {
+      promptOpts.structured = { schema: structuredSchema };
       if (cliArgs.debug) {
         logger.debug(`Structured output enabled with schema: ${cliArgs.schemaFile}`);
       }
