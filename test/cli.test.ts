@@ -88,6 +88,26 @@ describe("cli.parseArgs", () => {
     const args = parseArgs(["-h"]);
     assert.equal(args.showHelp, true);
   });
+
+  it("parses --schema-file with valid path", () => {
+    const args = parseArgs(["--schema-file", "schemas/basic.json", "test"]);
+    assert.equal(args.schemaFile, "schemas/basic.json");
+    assert.equal(args.userInput, "test");
+  });
+
+  it("parses --json with --schema-file", () => {
+    const args = parseArgs(["--json", "--schema-file", "my-schema.json", "task"]);
+    assert.equal(args.json, true);
+    assert.equal(args.schemaFile, "my-schema.json");
+    assert.equal(args.userInput, "task");
+  });
+
+  it("throws on missing value for --schema-file", () => {
+    assert.throws(
+      () => parseArgs(["--schema-file"]),
+      (err: any) => err instanceof AppError && err.code === "CONFIG_INVALID",
+    );
+  });
 });
 
 describe("cli.validateInput", () => {

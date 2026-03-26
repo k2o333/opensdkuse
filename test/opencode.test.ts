@@ -136,7 +136,7 @@ describe("opencode.connectOrStartServer - attach fail then spawn", () => {
 describe("opencode.createSession", () => {
   it("returns session id on success", async () => {
     const client = makeMockClient();
-    const result = await createSession(client, { title: "test" });
+    const result = await createSession(client, "test");
     assert.equal(result.id, "sess-123");
   });
 
@@ -147,7 +147,7 @@ describe("opencode.createSession", () => {
       },
     });
     await assert.rejects(
-      () => createSession(client, { title: "test" }),
+      () => createSession(client, "test"),
       (err: any) => err instanceof AppError && err.code === "SESSION_CREATE_FAILED",
     );
   });
@@ -196,6 +196,38 @@ describe("opencode.validateAgent", () => {
     });
     await assert.doesNotReject(() => validateAgent(client, "any-agent"));
   });
+
+  it("agent is validation-only (pre-check), not passed to SDK session methods", async () => {
+    let agentsCalled = false;
+    let sessionCreateParams: any;
+    const client = makeMockClient({
+      app: {
+        agents: async () => {
+          agentsCalled = true;
+          return { data: [{ name: "coder", mode: "primary" }] };
+        },
+      },
+      session: {
+        create: async (params: any) => {
+          sessionCreateParams = params;
+          return { data: { id: "sess-123" } };
+        },
+        prompt: async () => ({
+          data: {
+            info: { id: "msg-1", sessionID: "sess-123", role: "assistant" },
+            parts: [{ type: "text", text: "response" }],
+          },
+        }),
+      },
+    });
+
+    await validateAgent(client, "coder");
+    const sessionResult = await createSession(client, "test-session");
+
+    assert.ok(agentsCalled, "agents() was called for validation");
+    assert.equal(sessionCreateParams.title, "test-session");
+    assert.equal(sessionCreateParams.agent, undefined, "agent is NOT passed to session.create");
+  });
 });
 
 describe("opencode.injectPromptTemplate", () => {
@@ -225,6 +257,30 @@ describe("opencode.executePrompt", () => {
     const data = result.data as any;
     assert.equal(data.info.id, "msg-1");
     assert.equal(data.parts[0].text, "mock response");
+  });
+
+  it("passes model to session.prompt (not session.create)", async () => {
+    let capturedPromptParams: any;
+    let capturedCreateParams: any;
+    const client = makeMockClient({
+      session: {
+        create: async (params: any) => {
+          capturedCreateParams = params;
+          return { data: { id: "sess-new" } };
+        },
+        prompt: async (params: any) => {
+          capturedPromptParams = params;
+          return {
+            data: {
+              info: { id: "m1", sessionID: "sess-new", role: "assistant" },
+              parts: [{ type: "text", text: "ok" }],
+            },
+          };
+        },
+      },
+    });
+    await executePrompt(client, "sess-new", "task", { model: "openai/gpt-4" });
+    assert.deepEqual(capturedPromptParams.model, { providerID: "openai", modelID: "gpt-4" });
   });
 
   it("passes model when specified", async () => {

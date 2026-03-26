@@ -20,6 +20,10 @@ function makeResult(parts: any[], info?: any): SdkPromptResult {
   };
 }
 
+function makeMinimalResult(): SdkPromptResult {
+  return { data: undefined };
+}
+
 describe("response.normalizeSdkResponse", () => {
   it("extracts text parts", () => {
     const result = makeResult([{ type: "text", text: "hello world" }]);
@@ -71,6 +75,40 @@ describe("response.normalizeSdkResponse", () => {
     const normalized = normalizeSdkResponse({ error: "something" } as any);
     assert.equal(normalized.text, null);
     assert.equal(normalized.info, null);
+  });
+
+  it("handles undefined data", () => {
+    const normalized = normalizeSdkResponse({ data: undefined } as any);
+    assert.equal(normalized.text, null);
+    assert.equal(normalized.info, null);
+    assert.equal(normalized.parts.length, 0);
+  });
+
+  it("handles null info", () => {
+    const normalized = normalizeSdkResponse({ data: { info: null, parts: [] } } as any);
+    assert.equal(normalized.info, null);
+    assert.equal(normalized.error, null);
+    assert.equal(normalized.structuredOutput, null);
+  });
+
+  it("extracts error message correctly", () => {
+    const result = makeResult(
+      [],
+      {
+        id: "m1", sessionID: "s1", role: "assistant",
+        error: { name: "ValidationError", data: { message: "Invalid input", retries: 0 } },
+      },
+    );
+    const normalized = normalizeSdkResponse(result);
+    assert.equal(normalized.error?.name, "ValidationError");
+    assert.equal(normalized.error?.message, "Invalid input");
+    assert.equal(normalized.error?.retries, 0);
+  });
+
+  it("returns null error when no error in info", () => {
+    const result = makeResult([{ type: "text", text: "hello" }]);
+    const normalized = normalizeSdkResponse(result);
+    assert.equal(normalized.error, null);
   });
 });
 

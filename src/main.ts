@@ -21,6 +21,29 @@ import {
   isStructuredOutputError,
 } from "./response.js";
 import { AppError, getExitCode } from "./errors.js";
+import { readFileSync } from "node:fs";
+
+function loadSchemaFile(filePath: string): Record<string, unknown> {
+  let content: string;
+  try {
+    content = readFileSync(filePath, "utf-8");
+  } catch {
+    throw new AppError("CONFIG_INVALID", `Schema file not found: "${filePath}"`);
+  }
+
+  let schema: unknown;
+  try {
+    schema = JSON.parse(content);
+  } catch {
+    throw new AppError("CONFIG_INVALID", `Schema file "${filePath}" is not valid JSON`);
+  }
+
+  if (typeof schema !== "object" || schema === null || Array.isArray(schema)) {
+    throw new AppError("CONFIG_INVALID", `Schema file "${filePath}" must be a JSON object`);
+  }
+
+  return schema as Record<string, unknown>;
+}
 
 export async function main(argv?: string[]): Promise<number> {
   const rawArgs = argv ?? process.argv.slice(2);
@@ -72,6 +95,8 @@ export async function main(argv?: string[]): Promise<number> {
   const abortController = new AbortController();
   let runtimeHandle: RuntimeHandle | null = null;
   let sessionId: string | null = null;
+
+  // Shared interrupt flag and error holder
   let interrupted = false;
   let mainError: AppError | null = null;
 
@@ -87,17 +112,24 @@ export async function main(argv?: string[]): Promise<number> {
     }, config.startupTimeoutMs);
   }
 
-  // Signal handlers
-  const onSignal = (signal: string) => {
+  // Signal handlers - must be named functions to allow proper removal
+  const handleSigint = () => {
     if (!interrupted) {
       interrupted = true;
-      mainError = new AppError("INTERRUPTED", `Received ${signal}`);
+      mainError = new AppError("INTERRUPTED", "Received SIGINT");
+      abortController.abort();
+    }
+  };
+  const handleSigterm = () => {
+    if (!interrupted) {
+      interrupted = true;
+      mainError = new AppError("INTERRUPTED", "Received SIGTERM");
       abortController.abort();
     }
   };
 
-  process.on("SIGINT", () => onSignal("SIGINT"));
-  process.on("SIGTERM", () => onSignal("SIGTERM"));
+  process.on("SIGINT", handleSigint);
+  process.on("SIGTERM", handleSigterm);
 
   try {
     // Connect or spawn
@@ -108,18 +140,14 @@ export async function main(argv?: string[]): Promise<number> {
 
     if (interrupted) throw mainError!;
 
-    // Validate agent if specified
+    // Validate agent if specified (pre-check only, not passed to SDK)
     if (cliArgs.agent) {
-      logger.debug(`Validating agent "${cliArgs.agent}"...`);
+      logger.debug(`Validating agent "${cliArgs.agent}" (pre-check only)...`);
       await validateAgent(runtimeHandle.client, cliArgs.agent, logger);
     }
 
-    // Create session
-    const sessionResult = await createSession(runtimeHandle.client, {
-      title: config.sessionTitle,
-      agent: cliArgs.agent,
-      model: config.model || undefined,
-    });
+    // Create session (only title is passed to SDK)
+    const sessionResult = await createSession(runtimeHandle.client, config.sessionTitle);
     sessionId = sessionResult.id;
     logger.debug(`Session created: ${sessionId}`);
 
@@ -135,8 +163,20 @@ export async function main(argv?: string[]): Promise<number> {
     const userTask = buildUserTask(cliArgs.userInput);
     logger.debug("Sending user task...");
 
+    if (cliArgs.json && !cliArgs.schemaFile) {
+      throw new AppError("CONFIG_INVALID", "--json requires --schema-file to specify a JSON schema");
+    }
+
     const promptOpts: { model?: string; structured?: StructuredOutputOptions } = {};
     if (config.model) promptOpts.model = config.model;
+
+    if (cliArgs.schemaFile) {
+      const schema = loadSchemaFile(cliArgs.schemaFile);
+      promptOpts.structured = { schema };
+      if (cliArgs.debug) {
+        logger.debug(`Structured output enabled with schema: ${cliArgs.schemaFile}`);
+      }
+    }
 
     const rawResult = await executePrompt(runtimeHandle.client, sessionId, userTask, promptOpts);
 
@@ -203,8 +243,8 @@ export async function main(argv?: string[]): Promise<number> {
   } finally {
     // Cleanup
     if (timeoutTimer) clearTimeout(timeoutTimer);
-    process.off("SIGINT", () => onSignal("SIGINT"));
-    process.off("SIGTERM", () => onSignal("SIGTERM"));
+    process.off("SIGINT", handleSigint);
+    process.off("SIGTERM", handleSigterm);
 
     if (runtimeHandle) {
       // Abort session if running

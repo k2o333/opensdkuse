@@ -16,9 +16,14 @@ export interface RuntimeHandle {
 
 export interface SessionConfig {
   title: string;
+}
+
+export interface AgentOptions {
   agent?: string;
+}
+
+export interface PromptOptions {
   model?: string;
-  permissions?: unknown;
 }
 
 export interface StructuredOutputOptions {
@@ -119,18 +124,15 @@ export async function validateAgent(
     logger?.debug(`Agent "${agentName}" validated (mode: ${found.mode})`);
   } catch (err: any) {
     if (err instanceof AppError) throw err;
-    // agents() call failed — log and continue without validation
     logger?.debug(`Agent validation skipped (agents() failed): ${err?.message || err}`);
   }
 }
 
 export async function createSession(
   client: OpencodeClientType,
-  sessionConfig: SessionConfig,
+  title: string,
 ): Promise<{ id: string }> {
-  const result = await client.session.create({
-    title: sessionConfig.title,
-  });
+  const result = await client.session.create({ title });
   if (!result.data?.id) {
     throw new AppError("SESSION_CREATE_FAILED", "Session creation returned no ID");
   }

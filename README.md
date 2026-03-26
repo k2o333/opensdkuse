@@ -2,10 +2,17 @@
 
 基于 TypeScript + ts-node 的 OpenCode SDK CLI 工具。
 
+## 版本矩阵
+
+| CLI 版本 | SDK 版本 | Node 版本 | 说明 |
+|----------|----------|-----------|------|
+| 0.1.0    | 1.3.2    | >=18      | 初始 MVP，适配当前 SDK API |
+
+当前 SDK 路线：继续沿用 v2 风格适配，已锁定版本。
+
 ## 快速开始
 
 ```bash
-cd /root/projects/codingagentteams/app2
 npm install
 ```
 
@@ -28,8 +35,8 @@ node --loader ts-node/esm run.ts --model openai/gpt-4 "分析这段代码"
 # 开启调试输出
 node --loader ts-node/esm run.ts --debug "检查资源泄露"
 
-# JSON 结构化输出
-node --loader ts-node/esm run.ts --json "提取结构化字段"
+# JSON 结构化输出（需要配合 schema 文件）
+node --loader ts-node/esm run.ts --json --schema-file schemas/basic.json "提取结构化字段"
 
 # 设置超时（毫秒）
 node --loader ts-node/esm run.ts --timeout 30000 "长时间任务"
@@ -66,7 +73,7 @@ node --loader ts-node/esm run.ts -- --not-a-flag
 ## 项目结构
 
 ```
-app2/
+opensdkuse/
 ├─ prompt.md              # 默认 prompt 模板
 ├─ run.ts                 # 入口文件
 ├─ src/
@@ -93,10 +100,10 @@ app2/
 
 ```bash
 # 类型检查
-npx tsc --noEmit
+npm run typecheck
 
-# 运行测试（105 个测试）
-node --loader ts-node/esm --test test/*.test.ts
+# 运行测试
+npm test
 ```
 
 ## 工作流程
@@ -106,7 +113,7 @@ node --loader ts-node/esm --test test/*.test.ts
 3. 读取并校验 prompt.md 模板
 4. 尝试 attach 到已有 OpenCode 服务器（health check）
 5. attach 失败则自动 spawn 新服务器
-6. 校验 agent 类型（如果指定 `--agent`）
+6. 校验 agent 类型（如果指定 `--agent`，仅预检，不传递给 SDK）
 7. 创建 session
 8. **第一阶段**：`noReply: true` 注入 prompt 模板
 9. **第二阶段**：发送用户任务

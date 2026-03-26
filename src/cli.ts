@@ -6,6 +6,7 @@ export interface CliArgs {
   info: boolean;
   keepSession: boolean;
   json: boolean;
+  schemaFile?: string;
   model?: string;
   host?: string;
   port?: number;
@@ -31,6 +32,7 @@ const VALUE_FLAGS = new Set([
   "--prompt",
   "--timeout",
   "--agent",
+  "--schema-file",
 ]);
 
 function parsePositiveInt(value: string, label: string): number {
@@ -116,6 +118,9 @@ export function parseArgs(argv: string[]): CliArgs {
         case "--agent":
           args.agent = value;
           break;
+        case "--schema-file":
+          args.schemaFile = value;
+          break;
       }
       i += 2;
       continue;
@@ -153,14 +158,14 @@ USAGE:
 OPTIONS:
   --help, -h           Show this help message
   --debug              Enable debug output
-  --info               Show server/session info
   --model <name>       Model to use (e.g. provider/model-id)
   --host <hostname>    OpenCode server hostname (default: 127.0.0.1)
   --port <port>        OpenCode server port (default: 4096)
   --prompt <file>      Prompt template file (default: prompt.md)
   --keep-session       Keep session after execution
-  --json               Output structured JSON result
-  --agent <type>       Agent type to use
+  --json                Output structured JSON result (requires --schema-file)
+  --schema-file <path>  JSON Schema file for structured output
+  --agent <name>      Validate agent exists (pre-check only, not passed to SDK)
   --timeout <ms>       Execution timeout in milliseconds
   --                   End of options (remaining args are task input)
 
@@ -177,7 +182,7 @@ CONFIG PRIORITY: CLI args > Environment variables > Defaults
 EXAMPLES:
   npx ts-node run.ts "Analyze this TypeScript code for null pointer risks"
   npx ts-node run.ts --debug --model opencode/big-pickle "Check for resource leaks"
-  npx ts-node run.ts --json --timeout 30000 "Extract structured fields from text"
+  npx ts-node run.ts --json --schema-file schemas/basic.json "Extract structured fields"
   npx ts-node run.ts --keep-session "Start a debugging session"
 `.trim();
 }

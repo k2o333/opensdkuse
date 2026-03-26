@@ -44,28 +44,49 @@ export interface NormalizedResponse {
   error: { name?: string; message?: string; retries?: number } | null;
 }
 
+function getRootData(result: SdkPromptResult): { info: AssistantInfo | null; parts: Part[] } {
+  const data = result?.data;
+  return {
+    info: data?.info ?? null,
+    parts: (data?.parts as Part[]) ?? [],
+  };
+}
+
+function getInfo(result: SdkPromptResult): AssistantInfo | null {
+  return result?.data?.info ?? null;
+}
+
+function getParts(result: SdkPromptResult): Part[] {
+  return (result?.data?.parts as Part[]) ?? [];
+}
+
+function extractTextFromParts(parts: Part[]): string | null {
+  const textParts = parts.filter((p): p is TextPart => p.type === "text");
+  if (textParts.length === 0) return null;
+  return textParts.map((p) => p.text).join("\n");
+}
+
+function extractStructuredOutputFromInfo(info: AssistantInfo | null): unknown | null {
+  return info?.structured ?? null;
+}
+
+function extractErrorFromInfo(info: AssistantInfo | null): { name?: string; message?: string; retries?: number } | null {
+  if (!info?.error) return null;
+  return {
+    name: info.error.name,
+    message: info.error.data?.message,
+    retries: info.error.data?.retries,
+  };
+}
+
 export function normalizeSdkResponse(result: SdkPromptResult): NormalizedResponse {
   const raw = result;
-  const data = result?.data;
+  const { info, parts } = getRootData(result);
 
-  const info: AssistantInfo | null = data?.info ?? null;
-  const parts: Part[] = (data?.parts as Part[]) ?? [];
-
-  const textParts = parts.filter((p): p is TextPart => p.type === "text");
-  const text = textParts.length > 0 ? textParts.map((p) => p.text).join("\n") : null;
-
+  const text = extractTextFromParts(parts);
   const otherParts = parts.filter((p): p is NonTextPart => p.type !== "text");
-
-  const structuredOutput = info?.structured ?? null;
-
-  let error: { name?: string; message?: string; retries?: number } | null = null;
-  if (info?.error) {
-    error = {
-      name: info.error.name,
-      message: info.error.data?.message,
-      retries: info.error.data?.retries,
-    };
-  }
+  const structuredOutput = extractStructuredOutputFromInfo(info);
+  const error = extractErrorFromInfo(info);
 
   return { raw, info, parts, text, otherParts, structuredOutput, error };
 }
