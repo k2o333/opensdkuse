@@ -1,0 +1,21 @@
+{
+  "name": "opencode-sdk-cli",
+  "version": "0.1.0",
+  "description": "OpenCode SDK CLI tool (MVP)",
+  "type": "module",
+  "scripts": {
+    "dev": "node --loader ts-node/esm run.ts",
+    "start": "node --loader ts-node/esm run.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --loader ts-node/esm --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@opencode-ai/sdk": "latest"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "ts-node": "^10.0.0",
+    "@types/node": "^18.0.0",
+    "tslib": "^2.0.0"
+  }
+}
