@@ -169,6 +169,34 @@ describe("response.formatTextOutput", () => {
     const nr = normalizeSdkResponse(makeResult([]));
     assert.ok(formatTextOutput(nr).includes("No text content"));
   });
+
+  it("surfaces non-text part types when model returns no text", () => {
+    const nr = normalizeSdkResponse(
+      makeResult([
+        { type: "tool_use", name: "search" },
+        { type: "tool_result", result: "done" },
+      ]),
+    );
+    const output = formatTextOutput(nr);
+    assert.ok(output.includes("tool_use"));
+    assert.ok(output.includes("tool_result"));
+  });
+
+  it("surfaces model error summary instead of empty placeholder", () => {
+    const nr = normalizeSdkResponse(
+      makeResult(
+        [],
+        {
+          id: "m1", sessionID: "s1", role: "assistant",
+          error: { name: "APIError", message: "invalid api key" },
+        },
+      ),
+    );
+    const output = formatTextOutput(nr);
+    assert.ok(output.includes("APIError"));
+    assert.ok(output.includes("invalid api key"));
+    assert.equal(output.includes("No text content returned from model"), false);
+  });
 });
 
 describe("response.formatJsonOutput", () => {

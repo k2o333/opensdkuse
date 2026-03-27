@@ -75,6 +75,12 @@ node --loader ts-node/esm run.ts -- --not-a-flag
 - `mode=text`：纯文本模式，数据在 `text`
 - `mode=error`：执行出错，错误信息在 `error`（优先级：error > structured > text）
 
+### `--prompt` 语义
+
+- `--prompt <file>` 会替换默认的 [`prompt.md`](/home/quan/proj/opensdkuse/prompt.md) 模板，不会与默认模板叠加注入
+- prompt 模板应只包含角色、规则和输出约束，不应内嵌一次性的固定用户任务
+- 如果模型返回的不是文本而是其他 part 类型，CLI 会显示非文本 part 类型，避免误判为空响应
+
 ## 环境变量
 
 | 变量 | 说明 |

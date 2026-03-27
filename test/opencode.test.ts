@@ -9,6 +9,7 @@ import {
   abortSession,
   deleteSession,
   closeServer,
+  describeModelSelection,
   type SdkDeps,
 } from "../src/opencode.js";
 import { AppError } from "../src/errors.js";
@@ -359,6 +360,19 @@ describe("opencode.executePrompt", () => {
     assert.equal(capturedParams.format.type, "json_schema");
     assert.deepEqual(capturedParams.format.schema, { type: "object" });
     assert.equal(capturedParams.format.retryCount, 2);
+  });
+});
+
+describe("opencode.describeModelSelection", () => {
+  it("describes explicit provider/model strings", () => {
+    assert.equal(
+      describeModelSelection("minimax-cn/MiniMax-M2.7"),
+      "provider=minimax-cn model=MiniMax-M2.7",
+    );
+  });
+
+  it("describes missing model as server default", () => {
+    assert.equal(describeModelSelection(""), "server default");
   });
 });
 

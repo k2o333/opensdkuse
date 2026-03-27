@@ -33,6 +33,31 @@ export function validatePromptTemplate(content: string, maxLength: number): void
   }
 }
 
+export function detectPromptTemplateIssues(content: string): string[] {
+  const normalized = content.toLowerCase();
+  const issues: string[] = [];
+
+  const hasConcreteOutputRequest =
+    normalized.includes("写一个文档给我") ||
+    normalized.includes("write a document for me") ||
+    normalized.includes("output to ") ||
+    normalized.includes("写到 ") ||
+    normalized.includes("请在 ");
+  const hasRepoSpecificTask =
+    normalized.includes("根据这个代码库") ||
+    normalized.includes("according to this codebase") ||
+    normalized.includes("如果我要让这个代码库") ||
+    normalized.includes("in /home/quan/proj/opensdkuse/docs");
+
+  if (hasConcreteOutputRequest || hasRepoSpecificTask) {
+    issues.push(
+      "Prompt template appears to include a fixed user task. Templates passed via --prompt should define role/rules only, not embed a concrete one-off request.",
+    );
+  }
+
+  return issues;
+}
+
 export function buildUserTask(input: string): string {
   return input.trim();
 }

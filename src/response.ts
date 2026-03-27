@@ -105,11 +105,18 @@ export function isStructuredOutputError(error: { name?: string } | null): boolea
 }
 
 export function formatTextOutput(normalized: NormalizedResponse): string {
+  if (normalized.error) {
+    return `Model error: ${normalized.error.name ?? "UnknownError"}: ${normalized.error.message ?? "(no message)"}`;
+  }
   if (normalized.text) {
     return normalized.text;
   }
   if (normalized.structuredOutput !== null) {
     return JSON.stringify(normalized.structuredOutput, null, 2);
+  }
+  if (normalized.otherParts.length > 0) {
+    const partTypes = normalized.otherParts.map((part) => part.type).join(", ");
+    return `[Model returned no text content; non-text parts: ${partTypes}]`;
   }
   return "[No text content returned from model]";
 }

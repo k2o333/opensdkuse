@@ -1,7 +1,7 @@
 import { parseArgs, validateInput, showHelp } from "./cli.js";
 import { createConfig } from "./config.js";
 import { createLogger } from "./logger.js";
-import { loadPromptTemplate, buildUserTask } from "./prompt.js";
+import { loadPromptTemplate, buildUserTask, detectPromptTemplateIssues } from "./prompt.js";
 import {
   connectOrStartServer,
   validateAgent,
@@ -11,6 +11,7 @@ import {
   abortSession,
   deleteSession,
   closeServer,
+  describeModelSelection,
   type RuntimeHandle,
   type StructuredOutputOptions,
 } from "./opencode.js";
@@ -109,6 +110,11 @@ export async function main(argv?: string[]): Promise<number> {
     throw err;
   }
 
+  const promptTemplateIssues = detectPromptTemplateIssues(promptTemplate);
+  for (const issue of promptTemplateIssues) {
+    logger.info(`WARNING: ${issue}`);
+  }
+
   // Setup abort controller for timeout and signals
   const abortController = new AbortController();
   let runtimeHandle: RuntimeHandle | null = null;
@@ -184,6 +190,9 @@ export async function main(argv?: string[]): Promise<number> {
 
     const promptOpts: { model?: string; structured?: StructuredOutputOptions } = {};
     if (config.model) promptOpts.model = config.model;
+    if (cliArgs.debug) {
+      logger.debug(`Using model: ${describeModelSelection(config.model)}`);
+    }
 
     if (structuredSchema) {
       promptOpts.structured = { schema: structuredSchema };

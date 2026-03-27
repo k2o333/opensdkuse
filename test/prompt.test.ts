@@ -3,7 +3,12 @@ import assert from "node:assert/strict";
 import { writeFileSync, unlinkSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadPromptTemplate, validatePromptTemplate, buildUserTask } from "../src/prompt.js";
+import {
+  loadPromptTemplate,
+  validatePromptTemplate,
+  buildUserTask,
+  detectPromptTemplateIssues,
+} from "../src/prompt.js";
 import { AppError } from "../src/errors.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
@@ -88,5 +93,19 @@ describe("prompt.buildUserTask", () => {
 
   it("preserves content", () => {
     assert.equal(buildUserTask("do something"), "do something");
+  });
+});
+
+describe("prompt.detectPromptTemplateIssues", () => {
+  it("returns empty list for a role-only prompt template", () => {
+    const issues = detectPromptTemplateIssues("# Role\nYou are a coding assistant.\nFollow repo conventions.");
+    assert.deepEqual(issues, []);
+  });
+
+  it("flags templates that appear to embed a concrete user task", () => {
+    const issues = detectPromptTemplateIssues(
+      "# PRD Planner\n你是产品经理。\n请在 /tmp/out.md 写一个文档给我。\n根据这个代码库现有情况，输出方案。",
+    );
+    assert.ok(issues.some((issue) => issue.includes("fixed user task")));
   });
 });

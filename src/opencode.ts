@@ -64,6 +64,13 @@ function parseModel(model: string): { providerID: string; modelID: string } | un
   return { providerID: model, modelID: model };
 }
 
+export function describeModelSelection(model: string | undefined): string {
+  if (!model) return "server default";
+  const parsed = parseModel(model);
+  if (!parsed) return "server default";
+  return `provider=${parsed.providerID} model=${parsed.modelID}`;
+}
+
 export async function connectOrStartServer(
   config: AppConfig,
   deps?: { logger?: Logger; signal?: AbortSignal; sdk?: SdkDeps },
