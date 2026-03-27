@@ -6,13 +6,15 @@ export interface Logger {
   separator(char?: string, count?: number): void;
 }
 
-export function createLogger(debug: boolean): Logger {
+export function createLogger(debug: boolean, info: boolean): Logger {
   return {
     log(...args: unknown[]): void {
       console.log(...args);
     },
     info(...args: unknown[]): void {
-      console.error("[INFO]", ...args);
+      if (info || debug) {
+        console.error("[INFO]", ...args);
+      }
     },
     debug(...args: unknown[]): void {
       if (debug) {

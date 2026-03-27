@@ -157,7 +157,8 @@ USAGE:
 
 OPTIONS:
   --help, -h           Show this help message
-  --debug              Enable debug output
+  --debug              Enable debug output (implies --info)
+  --info               Enable info output
   --model <name>       Model to use (e.g. provider/model-id)
   --host <hostname>    OpenCode server hostname (default: 127.0.0.1)
   --port <port>        OpenCode server port (default: 4096)
