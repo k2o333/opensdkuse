@@ -1,0 +1,3 @@
+INFO  service=server method=POST path=/session/ses_error/message request
+INFO  service=llm providerID=minimax-cn-coding-plan modelID=MiniMax-M2.7 sessionID=ses_error small=false agent=build mode=primary stream
+ERROR service=llm providerID=minimax-cn-coding-plan modelID=MiniMax-M2.7 sessionID=ses_error small=false agent=build mode=primary error={"error":{"type":"rate_limit_error","message":"usage limit exceeded"}} stream error
