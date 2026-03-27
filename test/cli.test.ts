@@ -10,6 +10,12 @@ describe("cli.parseArgs", () => {
     assert.equal(args.userInput, "hello");
   });
 
+  it("parses --info flag", () => {
+    const args = parseArgs(["--info", "hello"]);
+    assert.equal(args.info, true);
+    assert.equal(args.userInput, "hello");
+  });
+
   it("handles -- as terminator", () => {
     const args = parseArgs(["--debug", "--", "--not-a-flag"]);
     assert.equal(args.debug, true);
@@ -143,5 +149,16 @@ describe("cli.showHelp", () => {
     const help = showHelp();
     assert.ok(help.length > 0);
     assert.ok(help.includes("USAGE"));
+  });
+
+  it("documents --info flag", () => {
+    const help = showHelp();
+    assert.ok(help.includes("--info"), "help should mention --info flag");
+    assert.ok(help.includes("Enable info output"), "help should describe --info");
+  });
+
+  it("documents that --debug implies --info", () => {
+    const help = showHelp();
+    assert.ok(help.includes("implies --info"), "help should state --debug implies --info");
   });
 });

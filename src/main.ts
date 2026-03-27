@@ -85,7 +85,7 @@ export async function main(argv?: string[]): Promise<number> {
   }
 
   const config = createConfig(cliArgs);
-  const logger = createLogger(cliArgs.debug);
+  const logger = createLogger(cliArgs.debug, cliArgs.info);
 
   // Validate input
   try {
