@@ -80,6 +80,20 @@ function extractErrorFromInfo(info: AssistantInfo | null): { name?: string; mess
   };
 }
 
+function extractErrorFromTopLevelError(error: unknown): { name?: string; message?: string; retries?: number } | null {
+  if (error == null) return null;
+  if (typeof error === "string") return { message: error };
+  if (typeof error === "object") {
+    const e = error as { name?: string; message?: string; data?: { retries?: number } };
+    return {
+      name: e.name,
+      message: e.message,
+      retries: e.data?.retries,
+    };
+  }
+  return { message: String(error) };
+}
+
 export function normalizeSdkResponse(result: SdkPromptResult): NormalizedResponse {
   const raw = result;
   const { info, parts } = getRootData(result);
@@ -87,7 +101,7 @@ export function normalizeSdkResponse(result: SdkPromptResult): NormalizedRespons
   const text = extractTextFromParts(parts);
   const otherParts = parts.filter((p): p is NonTextPart => p.type !== "text");
   const structuredOutput = extractStructuredOutputFromInfo(info);
-  const error = extractErrorFromInfo(info);
+  const error = extractErrorFromInfo(info) ?? extractErrorFromTopLevelError(result.error);
 
   return { raw, info, parts, text, otherParts, structuredOutput, error };
 }

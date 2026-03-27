@@ -110,6 +110,27 @@ describe("response.normalizeSdkResponse", () => {
     const normalized = normalizeSdkResponse(result);
     assert.equal(normalized.error, null);
   });
+
+  it("normalizes top-level result.error when info.error is absent", () => {
+    const result = { error: "SDK error occurred" } as unknown as SdkPromptResult;
+    const normalized = normalizeSdkResponse(result);
+    assert.ok(normalized.error !== null);
+    assert.equal(normalized.error?.message, "SDK error occurred");
+  });
+
+  it("prefers info.error over top-level result.error", () => {
+    const result = {
+      data: {
+        info: { id: "m1", sessionID: "s1", role: "assistant", error: { name: "InfoError", data: { message: "from info" } } },
+        parts: [],
+      },
+      error: "top-level error",
+    };
+    const normalized = normalizeSdkResponse(result);
+    assert.ok(normalized.error !== null);
+    assert.equal(normalized.error?.name, "InfoError");
+    assert.equal(normalized.error?.message, "from info");
+  });
 });
 
 describe("response.extractText", () => {
